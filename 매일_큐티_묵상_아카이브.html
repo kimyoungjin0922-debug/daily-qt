@@ -1,0 +1,272 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>매일 큐티 — 묵상 기록 아카이브</title>
+<style>
+:root{
+  --bg:#f5f2eb; --paper:#fffdf8; --ink:#2c2925; --muted:#766f66;
+  --line:#ddd5c9; --accent:#6f7650; --accent2:#9a6b4b; --soft:#ece8dc;
+  --danger:#a64b42; --shadow:0 8px 28px rgba(55,45,35,.08);
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font-family:"Noto Sans KR","Malgun Gothic",sans-serif;line-height:1.65}
+button,input,textarea{font:inherit}
+button{cursor:pointer}
+.app{max-width:1450px;margin:auto;padding:22px}
+header{background:var(--paper);border:1px solid var(--line);border-radius:18px;padding:24px 28px;box-shadow:var(--shadow);margin-bottom:18px}
+.header-top{display:flex;justify-content:space-between;gap:20px;align-items:flex-start}
+h1{margin:0;font-family:Georgia,"Noto Serif KR",serif;font-size:30px;letter-spacing:-.03em}
+.subtitle{color:var(--muted);margin:5px 0 0}
+.toolbar{display:flex;flex-wrap:wrap;gap:8px}
+.btn{border:1px solid var(--line);background:white;color:var(--ink);border-radius:9px;padding:8px 13px}
+.btn:hover{background:var(--soft)}
+.btn.primary{background:var(--accent);color:white;border-color:var(--accent)}
+.btn.danger{color:var(--danger)}
+.layout{display:grid;grid-template-columns:330px 1fr;gap:18px}
+.panel{background:var(--paper);border:1px solid var(--line);border-radius:18px;box-shadow:var(--shadow)}
+.sidebar{padding:18px;align-self:start;position:sticky;top:18px}
+.new-btn{width:100%;padding:13px;margin-bottom:15px;font-weight:700}
+.search{width:100%;border:1px solid var(--line);border-radius:9px;padding:10px 12px;background:white}
+.filter-row{display:flex;gap:7px;margin-top:8px}
+.filter-row select{width:100%;border:1px solid var(--line);border-radius:8px;padding:8px;background:white}
+.count{font-size:13px;color:var(--muted);margin:16px 2px 8px}
+.entries{max-height:calc(100vh - 300px);overflow:auto}
+.entry-item{padding:12px;border:1px solid transparent;border-radius:11px;margin-bottom:6px;cursor:pointer}
+.entry-item:hover{background:var(--soft)}
+.entry-item.active{background:#e8eadc;border-color:#c9cfb4}
+.entry-date{font-weight:700;font-size:14px}
+.entry-ref{font-size:13px;color:var(--accent2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.entry-preview{font-size:12px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.empty{padding:30px 12px;color:var(--muted);text-align:center}
+.editor{padding:26px 30px}
+.meta{display:grid;grid-template-columns:180px 1fr;gap:10px;margin-bottom:20px}
+.field{margin-bottom:18px}
+label{display:block;font-weight:700;margin-bottom:6px;font-size:14px}
+input[type=text],input[type=date],textarea,select{
+ width:100%;border:1px solid var(--line);border-radius:9px;padding:11px 12px;background:#fffefb;color:var(--ink);outline:none
+}
+input:focus,textarea:focus,select:focus{border-color:var(--accent);box-shadow:0 0 0 3px rgba(111,118,80,.10)}
+textarea{min-height:150px;resize:vertical}
+.section{border-top:1px solid var(--line);padding-top:20px;margin-top:20px}
+.section h2{font-family:Georgia,"Noto Serif KR",serif;font-size:21px;margin:0 0 4px}
+.section .hint{font-size:12px;color:var(--muted);margin-bottom:10px}
+.savebar{display:flex;justify-content:space-between;align-items:center;gap:10px;border-top:1px solid var(--line);margin-top:25px;padding-top:18px}
+.status{font-size:12px;color:var(--muted)}
+.stats{display:flex;gap:8px;flex-wrap:wrap;margin-top:16px}
+.stat{background:var(--soft);padding:6px 10px;border-radius:99px;font-size:12px;color:var(--muted)}
+.modal{position:fixed;inset:0;background:rgba(30,25,20,.4);display:none;align-items:center;justify-content:center;padding:20px;z-index:10}
+.modal.show{display:flex}
+.modal-card{background:var(--paper);border-radius:16px;padding:24px;max-width:650px;width:100%;box-shadow:var(--shadow)}
+.modal-card h2{margin-top:0}
+.notice{background:#f0eee5;border-left:4px solid var(--accent);padding:12px 14px;margin:12px 0;font-size:13px}
+@media(max-width:900px){.layout{grid-template-columns:1fr}.sidebar{position:static}.entries{max-height:320px}.header-top{flex-direction:column}.meta{grid-template-columns:1fr}}
+@media print{
+ body{background:white}.app{max-width:none;padding:0}header,.sidebar,.savebar,.toolbar{display:none!important}
+ .layout{display:block}.editor{padding:0}.panel{border:0;box-shadow:none}
+ textarea,input{border:0!important;padding:0!important;resize:none;background:white}
+ .section{break-inside:avoid}
+}
+</style>
+</head>
+<body>
+<div class="app">
+<header>
+  <div class="header-top">
+    <div>
+      <h1>매일 큐티</h1>
+      <div class="subtitle">말씀을 읽고, 묵상하고, 삶과 선교지에 적용하며 쌓아가는 묵상 아카이브</div>
+      <div class="stats" id="stats"></div>
+    </div>
+    <div class="toolbar">
+      <button class="btn" onclick="backup()">데이터 백업</button>
+      <button class="btn" onclick="document.getElementById('restoreFile').click()">백업 불러오기</button>
+      <button class="btn" onclick="window.print()">인쇄 / PDF</button>
+      <input id="restoreFile" type="file" accept=".json" hidden onchange="restore(event)">
+    </div>
+  </div>
+</header>
+
+<div class="layout">
+<aside class="panel sidebar">
+  <button class="btn primary new-btn" onclick="newEntry()">＋ 오늘의 묵상 기록</button>
+  <input class="search" id="search" placeholder="날짜, 본문, 묵상 내용 검색" oninput="renderList()">
+  <div class="filter-row">
+    <select id="yearFilter" onchange="renderList()"><option value="">전체 연도</option></select>
+    <select id="monthFilter" onchange="renderList()"><option value="">전체 월</option></select>
+  </div>
+  <div class="count" id="count"></div>
+  <div class="entries" id="entries"></div>
+</aside>
+
+<main class="panel editor">
+  <div class="meta">
+    <div>
+      <label for="date">묵상 날짜</label>
+      <input id="date" type="date">
+    </div>
+    <div>
+      <label for="title">오늘의 제목 / 한 문장</label>
+      <input id="title" type="text" placeholder="오늘 말씀에서 붙잡은 한 문장 또는 제목">
+    </div>
+  </div>
+
+  <div class="field">
+    <label for="reference">성경 본문</label>
+    <input id="reference" type="text" placeholder="예: 요한복음 15:1–11">
+  </div>
+
+  <section class="section">
+    <h2>1. 성경 본문 읽기</h2>
+    <div class="hint">본문에서 읽고 관찰한 내용, 반복되는 표현, 마음에 남은 말씀 등을 기록합니다.</div>
+    <textarea id="reading" placeholder="본문을 읽으며 발견한 것과 중요한 구절을 기록하세요."></textarea>
+  </section>
+
+  <section class="section">
+    <h2>2. 주석 묵상</h2>
+    <div class="hint">취리히 성경해설, 독일어 성서 해설·주석 등을 참고한 뒤, 주석 자체를 옮기기보다 내가 이해하고 묵상한 내용을 기록합니다.</div>
+    <textarea id="commentary" placeholder="주석을 통해 새롭게 이해한 것, 본문의 배경과 의미, 신학적 통찰, 개인적으로 묵상한 내용을 기록하세요."></textarea>
+  </section>
+
+  <section class="section">
+    <h2>3. 새롭게 깨달은 말씀</h2>
+    <div class="hint">주석을 읽고 묵상한 후 특별히 마음에 와닿거나 새롭게 깨달은 말씀과 영적 통찰을 기록합니다.</div>
+    <textarea id="insight" placeholder="오늘 새롭게 깨달은 말씀은 무엇인가? 이전에 알았지만 새롭게 다가온 의미, 하나님께서 깨닫게 하신 내용 등을 기록하세요."></textarea>
+  </section>
+
+  <section class="section">
+    <h2>4. 매일 적용하기</h2>
+    <div class="hint">오늘 내가 실제 삶에서 어떻게 순종할 것인지 구체적으로 기록합니다.</div>
+    <textarea id="daily" placeholder="오늘 내가 할 수 있는 구체적인 행동과 태도는 무엇인가?"></textarea>
+  </section>
+
+  <section class="section">
+    <h2>4. 선교지에서 적용하기</h2>
+    <div class="hint">선교 현장, 사역, 사람들과의 관계, 현지 교회와 공동체에 어떻게 적용할지 기록합니다.</div>
+    <textarea id="mission" placeholder="이 말씀을 선교지의 상황과 사역에 어떻게 적용할 것인가?"></textarea>
+  </section>
+
+  <section class="section">
+    <h2>5. 기도제목</h2>
+    <div class="hint">오늘 말씀을 붙들고 하나님께 드리는 기도와 중보 제목을 기록합니다.</div>
+    <textarea id="prayer" placeholder="감사, 회개, 간구, 가족과 사역을 위한 중보기도 등을 기록하세요."></textarea>
+  </section>
+
+  <section class="section">
+    <h2>추가 메모</h2>
+    <div class="hint">아내와 나눈 대화, 이후 떠오른 생각, 책을 쓸 때 다시 참고하고 싶은 자료 등을 자유롭게 기록합니다.</div>
+    <textarea id="memo" placeholder="추가로 남겨둘 내용을 기록하세요."></textarea>
+  </section>
+
+  <div class="savebar">
+    <span class="status" id="status">새 묵상 기록</span>
+    <div>
+      <button class="btn danger" onclick="deleteEntry()">삭제</button>
+      <button class="btn primary" onclick="saveEntry()">저장하기</button>
+    </div>
+  </div>
+</main>
+</div>
+</div>
+
+<div class="modal" id="help">
+<div class="modal-card">
+<h2>묵상 아카이브 사용법</h2>
+<div class="notice">이 홈페이지의 기록은 이 브라우저의 저장공간에 보관됩니다. 컴퓨터를 바꾸거나 브라우저 데이터를 삭제하기 전에 반드시 <b>데이터 백업</b>을 눌러 JSON 파일을 보관하세요.</div>
+<p><b>책으로 발전시키는 것을 고려한 구조</b></p>
+<p>각 날짜의 기록을 독립된 원고 자료처럼 저장합니다. 나중에는 날짜·성경본문·키워드로 검색하면서 특정 성경본문에 대한 묵상이나 선교 현장의 경험을 모아 책의 장(章) 단위로 재구성할 수 있습니다.</p>
+<button class="btn primary" onclick="document.getElementById('help').classList.remove('show')">닫기</button>
+</div></div>
+
+<script>
+const KEY='daily_qt_archive_v1';
+let data=JSON.parse(localStorage.getItem(KEY)||'[]');
+let currentId=null;
+
+const $=id=>document.getElementById(id);
+function today(){return new Date().toISOString().slice(0,10)}
+function blank(){
+ return {id:crypto.randomUUID(),date:today(),title:'',reference:'',reading:'',commentary:'',insight:'',daily:'',mission:'',prayer:'',memo:'',updatedAt:new Date().toISOString()};
+}
+function newEntry(){
+ const e=blank(); currentId=e.id; fill(e); renderList(); $('status').textContent='새 묵상 기록 — 저장 전';
+ window.scrollTo({top:0,behavior:'smooth'});
+}
+function fill(e){
+ ['date','title','reference','reading','commentary','insight','daily','mission','prayer','memo'].forEach(k=>$(k).value=e[k]||'');
+}
+function readForm(){
+ return {id:currentId||crypto.randomUUID(),date:$('date').value,title:$('title').value,reference:$('reference').value,
+ reading:$('reading').value,commentary:$('commentary').value,insight:$('insight').value,daily:$('daily').value,mission:$('mission').value,
+ prayer:$('prayer').value,memo:$('memo').value,updatedAt:new Date().toISOString()};
+}
+function saveEntry(){
+ const e=readForm();
+ if(!e.date){alert('묵상 날짜를 입력해 주세요.');return}
+ const i=data.findIndex(x=>x.id===e.id);
+ if(i>=0)data[i]=e; else data.push(e);
+ data.sort((a,b)=>b.date.localeCompare(a.date));
+ currentId=e.id; localStorage.setItem(KEY,JSON.stringify(data));
+ renderList(); $('status').textContent='저장됨 · '+new Date().toLocaleString('ko-KR');
+}
+function selectEntry(id){
+ const e=data.find(x=>x.id===id); if(!e)return;
+ currentId=id; fill(e); renderList(); $('status').textContent='마지막 저장 · '+new Date(e.updatedAt).toLocaleString('ko-KR');
+}
+function deleteEntry(){
+ if(!currentId)return;
+ const e=data.find(x=>x.id===currentId);
+ if(!e)return;
+ if(confirm((e.date||'이 기록')+' 묵상 기록을 삭제하시겠습니까?')){
+  data=data.filter(x=>x.id!==currentId); localStorage.setItem(KEY,JSON.stringify(data));
+  currentId=null; newEntry();
+ }
+}
+function renderYears(){
+ const years=[...new Set(data.map(e=>e.date.slice(0,4)).filter(Boolean))].sort().reverse();
+ const y=$('yearFilter'), old=y.value; y.innerHTML='<option value="">전체 연도</option>'+years.map(x=>`<option>${x}</option>`).join(''); y.value=years.includes(old)?old:'';
+}
+function renderList(){
+ renderYears();
+ const q=$('search').value.trim().toLowerCase(), y=$('yearFilter').value, m=$('monthFilter').value;
+ const list=data.filter(e=>{
+  const hay=[e.date,e.title,e.reference,e.reading,e.commentary,e.insight,e.daily,e.mission,e.prayer,e.memo].join(' ').toLowerCase();
+  return (!q||hay.includes(q))&&(!y||e.date.startsWith(y))&&(!m||e.date.slice(5,7)===m);
+ });
+ $('count').textContent=`전체 ${data.length}개 · 현재 ${list.length}개`;
+ $('entries').innerHTML=list.length?list.map(e=>`
+ <div class="entry-item ${e.id===currentId?'active':''}" onclick="selectEntry('${e.id}')">
+  <div class="entry-date">${e.date||'날짜 없음'}</div>
+  <div class="entry-ref">${esc(e.reference||'성경 본문 미입력')}</div>
+  <div class="entry-preview">${esc(e.title||e.reading||'아직 기록이 없습니다.')}</div>
+ </div>`).join(''):'<div class="empty">아직 묵상 기록이 없습니다.<br>첫 번째 기록을 시작해 보세요.</div>';
+ $('stats').innerHTML=`<span class="stat">묵상 기록 ${data.length}개</span><span class="stat">최근 ${data[0]?.date||'—'}</span>`;
+}
+function esc(s){return String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]))}
+function backup(){
+ const blob=new Blob([JSON.stringify(data,null,2)],{type:'application/json'});
+ const a=document.createElement('a'); a.href=URL.createObjectURL(blob);
+ a.download='매일큐티_묵상아카이브_'+today()+'.json'; a.click(); URL.revokeObjectURL(a.href);
+}
+function restore(ev){
+ const file=ev.target.files[0]; if(!file)return;
+ const r=new FileReader();
+ r.onload=()=>{
+  try{
+   const incoming=JSON.parse(r.result);
+   if(!Array.isArray(incoming))throw Error();
+   const map=new Map(data.map(x=>[x.id,x]));
+   incoming.forEach(x=>map.set(x.id||crypto.randomUUID(),x));
+   data=[...map.values()].sort((a,b)=>b.date.localeCompare(a.date));
+   localStorage.setItem(KEY,JSON.stringify(data)); renderList();
+   alert(`백업 데이터를 불러왔습니다. 총 ${data.length}개의 기록이 있습니다.`);
+  }catch(e){alert('백업 파일을 읽을 수 없습니다.')}
+ };
+ r.readAsText(file); ev.target.value='';
+}
+$('monthFilter').innerHTML='<option value="">전체 월</option>'+Array.from({length:12},(_,i)=>`<option value="${String(i+1).padStart(2,'0')}">${i+1}월</option>`).join('');
+newEntry(); renderList();
+</script>
+</body>
+</html>
